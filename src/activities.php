@@ -1,7 +1,7 @@
 <?php
 
 declare (strict_types=1);
-
+require_once __DIR__ . "/funktioner.php";
 /**
  * Läs av rutt-information och anropa funktion baserat på angiven rutt
  * @param Route $route Rutt-information
@@ -45,9 +45,6 @@ function hamtaAlla(): Response {
  * @param int $id Id för aktiviteten
  * @return Response
  */
-function hamtaEnskild(int $id): Response {
-    return new Response("Hämta aktivitet $id", 200);
-}
 
 /**
  * Lagrar en ny aktivitet i databasen
@@ -64,6 +61,36 @@ function sparaNy(string $aktivitet): Response {
  * @param string $aktivitet Ny text
  * @return Response
  */
+
+ function hamtaEnskild(int $id): Response{
+    $kollatID= filter_var($id, FILTER_VALIDATE_INT);
+    if(!$kollatID  || $kollatID<1) {
+        $out= new stdClass();
+        $out->error=["Felaktig indata", "$id är inget heltal"];
+        return new Response ($out, 400);
+    }
+
+    $db=connectDb ();
+    $stmt=$db->prepare("select id, Kategorier from kategorier where id=:id");
+    if (!$stmt->execute(["id"=>$kollatID])) {
+        $out=new stdClass();
+        $out->error=["fel vid läsning från databasen", implode(",",$stmt->errorInfo())];
+        return new Response($out,400);
+    }
+
+    if($row=$stmt->fetch()){
+        $out=new stdClass();
+        $out->id=$row["id"];
+        $out->activity=$row["Kategorier"];
+        return new Response($out);
+    } else {
+        $out=new stdClass();
+        $out->error=["hittade ingen post med id=$kollatID"];
+        return new Response($out, 400);
+    }
+
+    //return new Response("hämta akrivitet $id",200);
+ }
 function uppdatera(int $id, string $aktivitet): Response {
     return new Response("Uppdaterar aktivetet $id -> $aktivitet", 200);
 }

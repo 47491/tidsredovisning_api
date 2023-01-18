@@ -1,7 +1,7 @@
 <?php
 
 declare (strict_types=1);
-
+require_once "../src/activities.php";
 /**
  * Funktion för att testa alla aktiviteter
  * @return string html-sträng med resultatet av alla tester
@@ -47,8 +47,41 @@ function test_HamtaAllaAktiviteter(): string {
  */
 function test_HamtaEnAktivitet(): string {
     $retur = "<h2>test_HamtaEnAktivitet</h2>";
-    $retur .= "<p class='ok'>Testar hämta en aktivitet</p>";
-    $retur .= "<p class='error'>Det här testet gick fel!</p>";
+    try{
+        $svar=hamtaEnskild(-1);
+        if ($svar->getStatus()===400) {
+            $retur .="<p class='ok'>hämta enskild med negativt tal ger förväntat svar 400</p>"; 
+        } else {
+            $retur .="<p class='error'>hämta enskild med stort (100) tal get {$svar->getStatus()}"
+            . "inte förväntat svar 400</p>"; 
+        }
+
+        $svar=hamtaEnskild(100);
+        if ($svar->getStatus()===400) {
+            $retur .="<p class='ok'>hämta enskild med negativt tal ger förväntat svar 400</p>"; 
+        } else {
+            $retur .="<p class='error'>hämta enskild med stort (100) tal get {$svar->getStatus()}"
+            . "inte förväntat svar 400</p>"; 
+        }
+
+        $svar=hamtaEnskild((int)"sju");
+        if ($svar->getStatus()===400) {
+            $retur .="<p class='ok'>hämta enskild med negativt tal ger förväntat svar 400</p>"; 
+        } else {
+            $retur .="<p class='error'>hämta enskild med bokstäver ('sju') tal ger {$svar->getStatus()}"
+            . "inte förväntat svar 400</p>"; 
+        }
+
+        $svar=hamtaEnskild(3);
+        if ($svar->getStatus()===400) {
+            $retur .="<p class='ok'>hämta enskild med 3 ger förväntat svar 200</p>"; 
+        } else {
+            $retur .="<p class='error'>hämta enskild med 3 ger {$svar->getStatus()}"
+            . "inte förväntat svar 200</p>"; 
+        }
+    } catch (exception $ex) {
+        $retur .="<p class='error'> Någor gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
+    }
     return $retur;
 }
 
