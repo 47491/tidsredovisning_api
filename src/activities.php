@@ -52,8 +52,9 @@ function hamtaAlla(): Response {
  * @return Response
  */
 function SparaNy(string $aktivitet): Response {
-    $kontrolleradAktivitet= filter_var($aktivitet, FILTER_SANITIZE_ENCODED);
-    $kontrolleradAktivitet=trim($kontrolleradAktivitet);
+    $kontrolleradAktivitet=trim($aktivitet);
+    $kontrolleradAktivitet= filter_var($kontrolleradAktivitet, FILTER_SANITIZE_ENCODED);
+    
     if($kontrolleradAktivitet===""){
         $out=new stdClass();
         $out->error=["fel vid spara", "activity kan inte vara tom"];
@@ -134,8 +135,9 @@ function uppdatera(int $id, string $aktivitet): Response {
         $out->error=["Felaktig indata", "$id är inget heltal"];
         return new Response ($out, 400);
     }
-    $kontrolleradAktivitet= filter_var($aktivitet, FILTER_SANITIZE_ENCODED);
-    $kontrolleradAktivitet=trim($kontrolleradAktivitet);
+    $kontrolleradAktivitet=trim($aktivitet);
+    $kontrolleradAktivitet= filter_var($kontrolleradAktivitet, FILTER_SANITIZE_ENCODED);
+   
     if($kontrolleradAktivitet===""){
         $out=new stdClass();
         $out->error=["fel vid uppdatera", "activity kan inte vara tom"];

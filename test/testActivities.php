@@ -165,12 +165,103 @@ function test_UppdateraAktivitet(): string {
     $db->rollBack();
 
     //Testa uppdatera med samma text i aktivitet
+    $db->beginTransaction();
+    $nyPost=sparaNy("Nizze");
+    if($nyPost->getStatus()!==200){
+        throw new Exception("skapa ny post misslyckades", 10001);
+    } 
+    $uppdateringsId=(int)$nyPost->getContent()->id; //Den nya posten id
+    $svar=uppdatera($uppdateringsId, "Nizze");  //Prova att updatera
+
+    if($svar->getStatus()===200 && $svar->getContent ()->result===false){
+        $retur .="<p class='ok'>Uppdatera aktivitet med samma text lyckades</p>";
+    } else {
+        $retur .="<p class='error'> uppdatera aktivitet med samma text misslyckades";
+  
+
+        if(isset($svar->getContent()->result)) {
+            $retur .= var_export($svar->getContent()->result) . "returnerades istället för förväntat 'true'";
+        } else {
+            $retur .= "{$svar->getStatus()} returnerades istället för förväntat 200";
+        }
+        $retur .="</p>";
+    } 
+
+    $db->rollBack();
 
     //Testa Med tom aktivitet
+    $db->beginTransaction();
+    $nyPost=sparaNy("Nizze");
+    if($nyPost->getStatus()!==200){
+        throw new Exception("skapa ny post misslyckades", 10001);
+    } 
+    $uppdateringsId=(int)$nyPost->getContent()->id; //Den nya posten id
+    $svar=uppdatera($uppdateringsId, "");  //Prova att updatera
 
+    if($svar->getStatus()===400){
+        $retur .="<p class='ok'>Uppdatera aktivitet med tom text misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> uppdatera aktivitet med tom text returerade"
+                ."{$svar->getStatus()} istället för förväntat 400</p>";
+  
+
+        if(isset($svar->getContent()->result)) {
+            $retur .= var_export($svar->getContent()->result) . "returnerades istället för förväntat 'true'";
+        } else {
+            $retur .= "{$svar->getStatus()} returnerades istället för förväntat 200";
+        }
+        $retur .="</p>";
+    } 
+    $db->rollBack();
     //testa med ogiltigt id (-1)
-
+    $db->beginTransaction();
+    $uppdateringsId = -1;
+    $svar = uppdatera($uppdateringsId, "Test");
+    if($svar->getStatus()===400){
+        $retur .="<p class='ok'>Uppdatera aktivitet med ogiltigt id (-1) misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> uppdatera aktivitet med ogiltigt id (-1) returnerade"
+                ."{$svar->getStatus()} istället för förväntat 400</p>";
+    } 
+    $db->rollBack();
     //testa med obefintligt id (100)
+    $db->beginTransaction();
+    $uppdateringsId = 100;
+    $svar = uppdatera($uppdateringsId, "Test");
+    if($svar->getStatus()===200 && $svar->getContent()->result===false){
+        $retur .="<p class='ok'>Uppdatera aktivitet med obefintligt id (100) misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> uppdatera aktivitet med obefintligt id (100) misslyckades";
+
+        if(isset($svar->getContent()->result)) {
+            $retur .= var_export($svar->getContent()->result) . "returnerades istället för förväntat 'false'";
+        } else {
+            $retur .= "{$svar->getStatus()} returnerades istället för förväntat 200";
+        }
+        $retur .="</p>";
+    } 
+    $db->rollBack();
+
+    //cipis bugg- testa med mellanslag som aktivitet
+
+    $db->beginTransaction();
+    $nyPost=sparaNy("Nizze");
+    if($nyPost->getStatus()!==200){
+        throw new Exception("skapa ny post misslyckades", 10001);
+    } 
+    $uppdateringsId=(int)$nyPost->getContent()->id; //Den nya posten id
+    $svar=uppdatera($uppdateringsId, " ");  //Prova att updatera
+
+    if($svar->getStatus()===400){
+        $retur .="<p class='ok'>Uppdatera aktivitet med mellanslag text misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> uppdatera aktivitet med mellanslag text returerade"
+                ."{$svar->getStatus()} istället för förväntat 400</p>";
+  
+    } 
+    $db->rollBack();
+
+
 } catch (Exception $ex) {
     $db->rollBack();
     if ($ex->getCode()===10001) {
