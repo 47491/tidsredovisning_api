@@ -73,7 +73,7 @@ function test_HamtaEnAktivitet(): string {
         }
 
         $svar=hamtaEnskild(3);
-        if ($svar->getStatus()===400) {
+        if ($svar->getStatus()===200) {
             $retur .="<p class='ok'>hämta enskild med 3 ger förväntat svar 200</p>"; 
         } else {
             $retur .="<p class='error'>hämta enskild med 3 ger {$svar->getStatus()}"
@@ -91,9 +91,43 @@ function test_HamtaEnAktivitet(): string {
  */
 function test_SparaNyAktivitet(): string {
     $retur = "<h2>test_SparaNyAktivitet</h2>";
-    $retur .= "<p class='ok'>Testar spara ny aktivitet</p>";
-    $retur .= "<p class='ok'>Ett test till för spara som givk bra</p>";
+
+    //testa tom aktivitet
+    $aktivitet="";
+    $svar=sparaNy($aktivitet);
+    if($svar->getStatus()===400){
+        $retur .="<p class='ok'>Spara tom aktivitet misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> Spara tom aktivitet returerade {$svar->getStatus()} förväntades 400</p>";
+    } 
+
+    //Testa lägg till 
+    $db= connectDb();
+    $db->beginTransaction();
+    $aktivitet="Nizze";
+    $svar=sparaNy($aktivitet);
+    if($svar->getstatus()===200) {
+        $retur .="<p class='ok'>Spara tom aktivitet misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> Spara tom aktivitet returerade {$svar->getStatus()} förväntades 200</p>";
+    }  
+    $db->rollBack();
+    
+    //Testa lägg till samma
+    $db->beginTransaction();
+    $aktivitet="Nizze";
+    $svar=sparaNy($aktivitet);
+    $svar=sparaNy($aktivitet);
+    if($svar->getstatus()===400) {
+        $retur .="<p class='ok'>Spara aktivitet två gånger misslyckades som förväntat</p>";
+    } else {
+        $retur .="<p class='error'> Spara tom aktivitet returerade {$svar->getStatus()} förväntades 400</p>";
+    }  
+    $db->rollBack();
+
     return $retur;
+  
+    
 }
 
 /**
@@ -102,9 +136,53 @@ function test_SparaNyAktivitet(): string {
  */
 function test_UppdateraAktivitet(): string {
     $retur = "<h2>test_UppdateraAktivitet</h2>";
-    $retur .= "<p class='ok'>Testar uppdatera aktivitet</p>";
+
+    try{
+    //Testa uppdater med ny text i aktivitet
+    $db=connectDb();
+    $db->beginTransaction();
+    $nyPost=sparaNy("Nizze");
+    if($nyPost->getStatus()!==200){
+        throw new Exception("skapa ny post misslyckades", 10001);
+    } 
+    $uppdateringsId=(int)$nyPost->getContent()->id; //Den nya posten id
+    $svar=uppdatera($uppdateringsId, "Pelle");  //Prova att updatera
+
+    if($svar->getStatus()===200 && $svar->getContent ()->result===true){
+        $retur .="<p class='ok'>Uppdatera aktivitet lyckades</p>";
+    } else {
+        $retur .="<p class='error'> uppdatera aktivitet misslyckades";
+  
+
+        if(isset($svar->getContent()->result)) {
+            $retur .= var_export($svar->getContent()->result) . "returnerades istället för förväntat 'true'";
+        } else {
+            $retur .= "{$svar->getStatus()} returnerades istället för förväntat 200";
+        }
+        $retur .="</p>";
+    } 
+
+    $db->rollBack();
+
+    //Testa uppdatera med samma text i aktivitet
+
+    //Testa Med tom aktivitet
+
+    //testa med ogiltigt id (-1)
+
+    //testa med obefintligt id (100)
+} catch (Exception $ex) {
+    $db->rollBack();
+    if ($ex->getCode()===10001) {
+        $retur .= "<p class='error'>Spara ny post misslyckades, uppdatera går inte att testa!!!</p>";
+    } else {
+        $retur .="<p class='error'>Fel inträffande:<br>{$ex->getmessage()}</p>";
+    }
+}
+    
     return $retur;
 }
+    
 
 /**
  * Tester för funktionen radera aktivitet
