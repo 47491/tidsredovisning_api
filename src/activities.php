@@ -97,7 +97,7 @@ function SparaNy(string $aktivitet): Response {
  * @param string $aktivitet Ny text
  * @return Response
  */
-
+// kontrolera data 
  function hamtaEnskild(int $id): Response{
     $kollatID= filter_var($id, FILTER_VALIDATE_INT);
     if(!$kollatID  || $kollatID<1) {
@@ -107,13 +107,14 @@ function SparaNy(string $aktivitet): Response {
     }
 
     $db=connectDb ();
+     // koppla databas och hämta post
     $stmt=$db->prepare("select id, Kategorier from kategorier where id=:id");
     if (!$stmt->execute(["id"=>$kollatID])) {
         $out=new stdClass();
         $out->error=["fel vid läsning från databasen", implode(",",$stmt->errorInfo())];
         return new Response($out,400);
     }
-
+    // Sätt utdata och returnera
     if($row=$stmt->fetch()){
         $out=new stdClass();
         $out->id=$row["id"];
@@ -181,5 +182,37 @@ function uppdatera(int $id, string $aktivitet): Response {
  * @return Response
  */
 function radera(int $id): Response {
-    return new Response("Raderar aktivitet $id", 200);
+    //kontrollera id
+    $kollatID= filter_var($id, FILTER_VALIDATE_INT);
+    if(!$kollatID  || $kollatID<1) {
+        $out= new stdClass();
+        $out->error=["Felaktig indata", "$id är inget heltal"];
+        return new Response ($out, 400);
+    }
+
+    try{
+    //koppla mot databas
+    $db= connectDb();
+
+    //skicka radera-kommando
+    $stmt = $db->prepare ("DELETE From kategorier"
+        ." WHERE id=:id");
+    $stmt->execute(["id" =>$kollatID]);
+    $antalPoster = $stmt->rowCount();
+    //kontrollera databas-svar och skapa utdata-svar
+        $out=new stdClass();
+        if($antalPoster>0) {
+            $out->result=true;
+            $out->message=["Radera lyckades", "$antalPoster psot(er) raderades"];
+        } else {
+            $out->result=false;
+            $out->message=["Radera misslyckades", "inga poster raderades"];
+        }
+
+        return new Response($out);
+}  catch (Exception $ex) {
+    $out =new stdClass();
+    $out->error = ["Något fick fel vid radera", $ex->getMessage()];
+    return new Response($out, 400);
+}
 }
