@@ -32,16 +32,16 @@ function tasklists(Route $route): Response {
 function tasks(Route $route, array $postData): Response {
     try {
         if (count($route->getParams()) === 1 && $route->getMethod() === RequestMethod::GET) {
-            return hamtaEnskild((int) $route->getParams()[0]);
+            return hamtaEnskildUppgift((int) $route->getParams()[0]);
         }
         if (count($route->getParams()) === 0 && $route->getMethod() === RequestMethod::POST) {
-            return sparaNy($postData);
+            return SparaNyUppgift($postData);
         }
         if (count($route->getParams()) === 1 && $route->getMethod() === RequestMethod::PUT) {
-            return uppdatera((int) $route->getParams()[0], $postData);
+            return uppdateraUppgift((int) $route->getParams()[0], $postData);
         }
         if (count($route->getParams()) === 1 && $route->getMethod() === RequestMethod::DELETE) {
-            return radera((int) $route->getParams()[0]);
+            return raderaUppgift((int) $route->getParams()[0]);
         }
     } catch (Exception $exc) {
         return new Response($exc->getMessage(), 400);
@@ -56,7 +56,48 @@ function tasks(Route $route, array $postData): Response {
  * @return Response
  */
 function hamtaSida(int $sida): Response {
-    return new Response("Hämta alla tasks sida $sida", 200);
+    $postePerSida=3;
+
+    //kolla att id är ok
+    $kollatSidnr=filter_var($sida, FILTER_VALIDATE_INT);
+    if(!$kollatSidnr || $kollatSidnr<1) {
+        $out = new stdClass();
+        $out-> error=["felaktigt sidnummer ($sida( angivet", "Läsning misslyckades"];
+        return new Response($out, 400);
+    }
+    //koppla mot databasen
+    $db=connectDb();
+    //hämta antal poster 
+    $result=$db->query("SELECT COUNT(*) FROM kategorier");
+    if($row=$result->fetch()) {
+        $antalPoster=$row[0];
+    }
+    $antalSidor=ceil($antalPoster/$postePerSida);
+    //hämta aktuella poster
+    $first=($kollatSidnr-1) *$postePerSida;
+    $postePerSida;
+    $result=$db->query("SELECT t.ID, Tid, Datum, KategoriID, Beskrivning, kategorier"
+    ." FROM uppgifter t "
+    ." INNER JOIN kategorier a ON KategoriID=a.ID "
+    ." ORDER BY Datum asc "
+    ." LIMIT $first, $postePerSida ");
+    //loopa resultatsettet och skapa data
+    $record=[];
+    while($row=$result->fetch()) {
+        $rec=new stdClass();
+        $rec->id=$row["ID"];
+        $rec->activityId=$row["KategoriID"];
+        $rec->activity=$row["kategorier"];
+        $rec->date=$row["Datum"];
+        $rec->time=substr($row["Tid"], 0,5);
+        $rec->description=$row["Beskrivning"];
+        $record[]=$rec;
+    }
+    //returnera utdata 
+    $out=new stdClass();
+    $out->pages=$antalSidor;
+    $out->tasks=$record;
+    return new Response($out);
 }
 
 /**
@@ -66,7 +107,41 @@ function hamtaSida(int $sida): Response {
  * @return Response
  */
 function hamtaDatum(DateTimeInterface $from, DateTimeInterface $tom): Response {
-    return new Response("Hämta alla tasks mellan " . $from->format("Y-m-d") . " och " . $tom->format("Y-m-d"), 200);
+    // kolla indata
+    if($from->format('Y-m-d')>$tom->format('Y-m-d')) {
+        $out=new stdClass();
+        $out->error=["felaktig indata", "från-datum ska vara mindre än till-datum"];
+        return new Response($out, 400);
+
+    }
+
+    // koppla databas
+    $db=connectDb();
+    // hämta poster
+    $stmt=$db->prepare("SELECT t.ID, Tid, Datum, KategoriID, Beskrivning, kategorier"
+        ." FROM uppgifter t "
+        ." INNER JOIN kategorier a ON KategoriID=a.ID "
+        ." WHERE Datum between :from AND :to"
+        ." ORDER BY Datum asc ");
+    $stmt->execute(["from"=>$from->format('Y-m-d'), "to"=>$tom->format('Y-m-d')]);
+
+// loopa resultatsettet och skapa utdata
+    $records =[];
+    while($row=$stmt->fetch()) {
+        $rec=new stdClass();
+        $rec->id=$row["ID"];
+        $rec->activityId=$row["KategoriID"];
+        $rec->activity=$row["kategorier"];
+        $rec->date=$row["Datum"];
+        $rec->time=substr($row["Tid"], 0,5);
+        $rec->description=$row["Beskrivning"];
+        $records[]=$rec;
+    }
+    //returnera utdata 
+    $out=new stdClass();
+    $out->tasks=$records;
+
+    return new Response($out);
 }
 
 /**
@@ -74,7 +149,7 @@ function hamtaDatum(DateTimeInterface $from, DateTimeInterface $tom): Response {
  * @param int $id Id för post som ska hämtas
  * @return Response
  */
-function hamtaEnskild(int $id): Response {
+function hamtaEnskildUppgift(int $id): Response {
     return new Response("Hämta task $id", 200);
 }
 
@@ -83,7 +158,7 @@ function hamtaEnskild(int $id): Response {
  * @param array $postData indata för uppgiften
  * @return Response
  */
-function sparaNy(array $postData): Response {
+function sparaNyUppgift(array $postData): Response {
     return new Response("Sparar ny task", 200);
 }
 
@@ -93,7 +168,7 @@ function sparaNy(array $postData): Response {
  * @param array $postData ny data att sparas
  * @return Response
  */
-function uppdatera(int $id, array $postData): Response {
+function uppdateraUppgift(int $id, array $postData): Response {
     return new Response("Uppdaterar task $id", 200);
 }
 
@@ -102,6 +177,6 @@ function uppdatera(int $id, array $postData): Response {
  * @param int $id Id för posten som ska raderas
  * @return Response
  */
-function radera(int $id): Response {
+function raderaUppgift(int $id): Response {
     return new Response("Raderar task $id", 200);
 }
