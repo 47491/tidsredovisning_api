@@ -150,7 +150,38 @@ function hamtaDatum(DateTimeInterface $from, DateTimeInterface $tom): Response {
  * @return Response
  */
 function hamtaEnskildUppgift(int $id): Response {
-    return new Response("Hämta task $id", 200);
+    //kolla indata
+    $kollatID= filter_var($id, FILTER_VALIDATE_INT);
+    if(!$kollatID  || $kollatID<1) {
+        $out= new stdClass();
+        $out->error=["Felaktig indata", "$id är inget heltal"];
+        return new Response ($out, 400);
+    }
+    //koppla mot databas
+    $db=connectDb();
+
+    //förbered och exekvera sql
+    $stmt=$db->prepare("SELECT t.ID, Tid, Datum, KategoriID, Beskrivning, kategorier"
+    ." FROM uppgifter t "
+    ." INNER JOIN kategorier a ON KategoriID=a.ID "
+    ." WHERE t.id=:id ");
+$stmt->execute(["id"=>$kollatID]);
+    //returnera svaret¨
+    if($row=$stmt->fetch())  {
+        $out= new stdClass();
+        $out->id=$row["ID"];
+        $out->activityId=$row["KategoriID"];
+        $out->date=$row["Datum"];
+        $out->time=$row["Tid"];
+        $out->description=$row["Beskrivning"];
+        $out->activity=$row["kategorier"];
+        
+        return new Response($out);
+    } else { 
+        $out= new stdClass();
+        $out->error=["fel vid hämtning", "inga poster returnerades" ];
+        return new Response($out, 400); 
+    }
 }
 
 /**
