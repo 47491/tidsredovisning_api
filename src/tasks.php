@@ -159,6 +159,43 @@ function hamtaEnskildUppgift(int $id): Response {
  * @return Response
  */
 function sparaNyUppgift(array $postData): Response {
+    //kolla indata
+    $check=kontrolleraIndata($postData);
+    if($check!=="") {
+        $out=new stdClass();
+        $out->error=["felaktig indata", $check];
+        return new response ($out, 400);
+
+    }
+    //koppla mot databas
+    $db= connectDb();
+
+    //förbered och exekvera SQL
+    $stmt=$db->prepare("INSERT INTO uppgifter"
+        . "(Datum, Tid, kategoriID, beskrivning)"
+        . " VALUES (:date, :time, :activityId, :description)");
+       
+        $stmt->execute(["date"=>$postData["date"],
+        "time"=>$postData["time"],
+        "activityId"=>$postData["activityId"],
+        "description"=>$postData["description"]?? ""]);
+
+    //kontrollera svar
+    $antalPoster=$stmt->rowCount();
+    if($antalPoster>0)  {
+        $out=new stdClass();
+        $out->id=$db->lastInsertId();
+        $out->message=["spara ny uppgift lyckades"];
+        return new Response($out);
+    } else {
+        $out=new stdClass();
+        $out->error=["spara ny uppgift misslyckades"];
+        return new response($out,400);
+    }
+    //skapa utdata
+
+
+
     return new Response("Sparar ny task", 200);
 }
 
@@ -179,4 +216,38 @@ function uppdateraUppgift(int $id, array $postData): Response {
  */
 function raderaUppgift(int $id): Response {
     return new Response("Raderar task $id", 200);
+}
+
+function kontrolleraIndata(array $postData):string {
+    try{
+        // kontrollera giltigt datum
+        if(!isset($postData["time"])) {
+            return "datum saknas (date)";
+        }
+
+        if(!isset($postData["date"])) {
+            return "datum saknas (date)";
+        }
+        $datum= DateTimeImmutable::createFromFormat ("Y-m-d", $postData["date"]);
+        if(!$datum || $datum->format('Y-m-d')>date("Y-m-d")) {
+            return"Ogiltigt datum";
+        }
+        //kontrollera giltig tid 
+        $tid=DateTimeImmutable::createFromFormat("H:i", $postData["time"]);
+        if(!$tid || $tid->format("H:i")>"08:00") {
+            return "ogiltigt tid (time)";
+        }
+        // kontrollera aktivitetsid
+        $aktivitetsId=filter_var($postData["activityId"], FILTER_VALIDATE_INT);
+        if(!$aktivitetsId || $aktivitetsId<1) {
+            return "ogiltigt aktivitesid (activityId)";
+        }
+        $svar=hamtaEnskildAktivitet($aktivitetsId);
+        if($svar->getStatus()!==200) {
+            return "angivet aktivitetsid saknas";
+        }
+        return "";
+    } catch (exception $exc) {
+        return $exc->getMessage();
+    } 
 }
